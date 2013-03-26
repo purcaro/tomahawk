@@ -101,7 +101,7 @@ DirLister::scanDir( QDir dir, int depth )
 }
 
 
-DirListerThreadController::DirListerThreadController( QObject *parent )
+DirListerThreadController::DirListerThreadController( QObject* parent )
     : QThread( parent )
 {
     tDebug() << Q_FUNC_INFO;
@@ -184,9 +184,9 @@ MusicScanner::startScan()
     //FIXME: For multiple collection support make sure the right prefix gets passed in...or not...
     //bear in mind that simply passing in the top-level of a defined collection means it will not return items that need
     //to be removed that aren't in that root any longer -- might have to do the filtering in setMTimes based on strings
-    DatabaseCommand_FileMtimes *cmd = new DatabaseCommand_FileMtimes();
+    DatabaseCommand_FileMtimes* cmd = new DatabaseCommand_FileMtimes();
     connect( cmd, SIGNAL( done( QMap< QString, QMap< unsigned int, unsigned int > > ) ),
-                    SLOT( setFileMtimes( QMap< QString, QMap< unsigned int, unsigned int > > ) ) );
+             SLOT( setFileMtimes( QMap< QString, QMap< unsigned int, unsigned int > > ) ) );
 
     Database::instance()->enqueue( QSharedPointer< DatabaseCommand >( cmd ) );
     return;
@@ -208,7 +208,7 @@ MusicScanner::scan()
     tDebug( LOGEXTRA ) << "Num saved file mtimes from last scan:" << m_filemtimes.size();
 
     connect( this, SIGNAL( batchReady( QVariantList, QVariantList ) ),
-                     SLOT( commitBatch( QVariantList, QVariantList ) ), Qt::DirectConnection );
+             SLOT( commitBatch( QVariantList, QVariantList ) ), Qt::DirectConnection );
 
     if ( m_scanMode == MusicScanner::FileScan )
     {
@@ -226,7 +226,7 @@ void
 MusicScanner::scanFilePaths()
 {
     tDebug( LOGVERBOSE ) << Q_FUNC_INFO;
-    foreach( QString path, m_paths )
+    foreach ( QString path, m_paths )
     {
         QFileInfo fi( path );
         if ( fi.exists() && fi.isReadable() )
@@ -245,7 +245,7 @@ MusicScanner::postOps()
     if ( m_scanMode == MusicScanner::DirScan )
     {
         // any remaining stuff that wasnt emitted as a batch:
-        foreach( const QString& key, m_filemtimes.keys() )
+        foreach ( const QString& key, m_filemtimes.keys() )
         {
             if ( !m_filemtimes[ key ].keys().isEmpty() )
                 m_filesToDelete << m_filemtimes[ key ].keys().first();
@@ -347,7 +347,7 @@ MusicScanner::scanFile( const QFileInfo& fi )
         return;
 
     m_scannedfiles << m;
-    if ( m_batchsize != 0 && (quint32)m_scannedfiles.length() >= m_batchsize )
+    if ( m_batchsize != 0 && ( quint32 )m_scannedfiles.length() >= m_batchsize )
     {
         emit batchReady( m_scannedfiles, m_filesToDelete );
         m_scannedfiles.clear();
@@ -372,17 +372,16 @@ MusicScanner::readFile( const QFileInfo& fi )
     if ( m_scanned % 100 == 0 )
         tDebug( LOGINFO ) << "Scan progress:" << m_scanned << fi.canonicalFilePath();
 
-    #ifdef COMPLEX_TAGLIB_FILENAME
-        const wchar_t *encodedName = reinterpret_cast< const wchar_t * >( fi.canonicalFilePath().utf16() );
-    #else
-        QByteArray fileName = QFile::encodeName( fi.canonicalFilePath() );
-        const char *encodedName = fileName.constData();
-    #endif
+#ifdef COMPLEX_TAGLIB_FILENAME
+    const wchar_t* encodedName = reinterpret_cast< const wchar_t* >( fi.canonicalFilePath().utf16() );
+#else
+    QByteArray fileName = QFile::encodeName( fi.canonicalFilePath() );
+    const char* encodedName = fileName.constData();
+#endif
 
     TagLib::FileRef f( encodedName );
-    if ( !m_fingerprint && ( f.isNull() || !f.tag() )  )
+    if ( !m_fingerprint && ( f.isNull() || !f.tag() ) )
     {
-        tDebug() << "skipping file part 1";
         m_skippedFiles << fi.canonicalFilePath();
         m_skipped++;
         return QVariantMap();
@@ -391,10 +390,10 @@ MusicScanner::readFile( const QFileInfo& fi )
     int bitrate = 0;
     int duration = 0;
 
-    Tomahawk::Tag *tag = Tomahawk::Tag::fromFile( f );
+    Tomahawk::Tag* tag = Tomahawk::Tag::fromFile( f );
     if ( f.audioProperties() )
     {
-        TagLib::AudioProperties *properties = f.audioProperties();
+        TagLib::AudioProperties* properties = f.audioProperties();
         duration = properties->length();
         bitrate = properties->bitrate();
     }
@@ -430,7 +429,7 @@ MusicScanner::readFile( const QFileInfo& fi )
     QVariantMap m;
     m["url"]          = url.arg( fi.canonicalFilePath() );
     m["mtime"]        = fi.lastModified().toUTC().toTime_t();
-    m["size"]         = (unsigned int)fi.size();
+    m["size"]         = ( unsigned int )fi.size();
     m["mimetype"]     = mimetype;
     m["duration"]     = duration;
     m["bitrate"]      = bitrate;
@@ -454,42 +453,56 @@ MusicScanner::fingerprintFile( const QFileInfo& fi )
 {
     tDebug() << "Fingerprinting track: " << fi.absoluteFilePath();
     lastfm::MutableTrack track;
-    track.setArtist("TestArtist");
-    track.setTitle("TestTitel");
-    track.setAlbum("Album1");
-    track.setTrackNumber(1);
+    track.setArtist( "TestArtist" );
+    track.setTitle( "TestTitel" );
+    track.setAlbum( "Album1" );
+    track.setTrackNumber( 1 );
     track.setUrl( QUrl::fromLocalFile( fi.absoluteFilePath() ) );
     try
     {
-        lastfm::Fingerprint fp( track );
-        if ( fp.id().isNull() )
+        lastfm::Fingerprint* fp = new lastfm::Fingerprint( track );
+        if ( fp->id().isNull() )
         {
             //TODO: atm let's only fp mp3, make it later nicer and fp others too
             if ( fi.fileName().endsWith( "mp3" ) || fi.fileName().endsWith( "MP3" ) )
             {
                 tDebug() << "Fingerprinting track for real";
-                lastfm::FingerprintableSource* fs = new MadSource(  );
-                fp.generate( fs );
+                lastfm::FingerprintableSource* fs = new MadSource( );
+                fp->generate( fs );
 
                 // Quick & dirty hack
                 // TODO: make this async
-                QNetworkReply* reply = fp.submit();
-                QEventLoop loop;
-                loop.connect( reply, SIGNAL(finished()), SLOT(quit()) );
-                loop.exec();
-                tDebug() << reply->peek( reply->bytesAvailable() );
+                QNetworkReply* reply = fp->submit();
 
-                fp.decode( reply );
+                m_fingerprintMap.insert( reply, QPair<QFileInfo, lastfm::Fingerprint*>( fi, fp ) );
+                connect( reply, SIGNAL( finished() ), this, SLOT( fingerprintLookupFinished() ) );
             }
-            else
-                return 0;
         }
-        tDebug() << "got Fingerprint ID : " << fp.id();
-
+        else
+        {
+            tDebug() << fi.absoluteFilePath() << ": " << fp->id();
+            delete fp;
+        }
     }
     catch ( lastfm::Fingerprint::Error e )
     {
-        return 0;
+        tDebug() << "FP Error: " << e;
     }
     return 0;
 }
+
+void
+MusicScanner::fingerprintLookupFinished()
+{
+    QNetworkReply* reply = qobject_cast< QNetworkReply* >( sender() );
+    QFileInfo fi = m_fingerprintMap.value( reply ).first;
+    lastfm::Fingerprint* fp = m_fingerprintMap.value( reply ).second;
+
+    tDebug() << "got a Fingerprint reply for " << fi.absoluteFilePath();
+
+    tDebug() << reply->peek( reply->bytesAvailable() );
+    fp->decode( reply );
+    tDebug() << fi.absoluteFilePath() << ": " << fp->id();
+    delete fp;
+}
+

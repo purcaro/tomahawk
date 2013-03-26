@@ -36,6 +36,7 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QPointer>
+#include <lastfm/Fingerprint.h>
 #include <database/Database.h>
 #include "taghandlers/tag.h"
 
@@ -124,6 +125,7 @@ private slots:
     void cleanup();
     void commitBatch( const QVariantList& tracks, const QVariantList& deletethese );
     void commandFinished();
+    void fingerprintLookupFinished();
 
 private:
     void scanFilePaths();
@@ -142,10 +144,11 @@ private:
     QVariantList m_scannedfiles;
     QVariantList m_filesToDelete;
     quint32 m_batchsize;
-    
-    bool m_fingerprint;
 
     DirListerThreadController* m_dirListerThreadController;
+
+    bool m_fingerprint;
+    QMap<QNetworkReply* ,QPair<QFileInfo,lastfm::Fingerprint*> > m_fingerprintMap;
 };
 
 #endif
