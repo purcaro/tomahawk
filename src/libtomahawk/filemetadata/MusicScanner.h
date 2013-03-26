@@ -37,6 +37,7 @@
 #include <QMutexLocker>
 #include <QPointer>
 #include <database/Database.h>
+#include "taghandlers/tag.h"
 
 // descend dir tree comparing dir mtimes to last known mtime
 // emit signal for any dir with new content, so we can scan it.
@@ -111,6 +112,7 @@ signals:
 
 private:
     QVariant readFile( const QFileInfo& fi );
+    Tomahawk::Tag* fingerprintFile ( const QFileInfo& fi );
     void executeCommand( QSharedPointer< DatabaseCommand > cmd );
 
 private slots:
@@ -140,6 +142,8 @@ private:
     QVariantList m_scannedfiles;
     QVariantList m_filesToDelete;
     quint32 m_batchsize;
+    
+    bool m_fingerprint;
 
     DirListerThreadController* m_dirListerThreadController;
 };

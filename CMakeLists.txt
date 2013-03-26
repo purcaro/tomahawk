@@ -238,6 +238,10 @@ IF( WIN32 )
     macro_log_feature(QTSPARKLE_FOUND "qtsparkle" "Library for creating auto updaters written in Qt" "https://github.com/davidsansome/qtsparkle" FALSE "" "")
 ENDIF( WIN32 )
 
+#Temporary only - we probably need either a CMake file for mad or something nicer than mad
+include(LibFindMacros)
+libfind_pkg_check_modules(mad_PKGCONF mad)
+
 #TODO: support external qxt
 set(QXTWEB_FOUND TRUE)
 set(QXTWEB_LIBRARIES qxtweb-standalone)

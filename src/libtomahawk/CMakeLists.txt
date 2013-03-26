@@ -285,6 +285,8 @@ list(APPEND libSources
     filemetadata/taghandlers/mp4tag.cpp
     filemetadata/taghandlers/oggtag.cpp
     filemetadata/MetadataEditor.cpp
+    #Temporary only - requires libmad - can we do this anyhow with libs we already use?
+    filemetadata/MadSource.cpp
 
     network/BufferIoDevice.cpp
     network/MsgProcessor.cpp
@@ -484,6 +486,11 @@ TARGET_LINK_LIBRARIES( tomahawklib
     ${QT_QTCORE_LIBRARY}
     ${OS_SPECIFIC_LINK_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    #Temporary only
+    ${mad_PKGCONF_LDFLAGS}
+    #CMake should also find fp library
+    lastfm_fingerprint
+
     ${LINK_LIBRARIES}
 )
 

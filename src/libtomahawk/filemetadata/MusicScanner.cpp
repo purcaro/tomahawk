@@ -33,6 +33,10 @@
 #include "taghandlers/tag.h"
 
 #include "utils/Logger.h"
+#include <lastfm/Track.h>
+#include <lastfm/Fingerprint.h>
+#include <lastfm/FingerprintableSource.h>
+#include "MadSource.h"
 
 void
 DirLister::go()
@@ -135,6 +139,7 @@ MusicScanner::MusicScanner( MusicScanner::ScanMode scanMode, const QStringList& 
     , m_paths( paths )
     , m_batchsize( bs )
     , m_dirListerThreadController( 0 )
+    , m_fingerprint( true )
 {
     m_ext2mime.insert( "mp3",  TomahawkUtils::extensionToMimetype( "mp3" ) );
     m_ext2mime.insert( "ogg",  TomahawkUtils::extensionToMimetype( "ogg" ) );
@@ -375,8 +380,9 @@ MusicScanner::readFile( const QFileInfo& fi )
     #endif
 
     TagLib::FileRef f( encodedName );
-    if ( f.isNull() || !f.tag() )
+    if ( !m_fingerprint && ( f.isNull() || !f.tag() )  )
     {
+        tDebug() << "skipping file part 1";
         m_skippedFiles << fi.canonicalFilePath();
         m_skipped++;
         return QVariantMap();
@@ -403,9 +409,19 @@ MusicScanner::readFile( const QFileInfo& fi )
     if ( !tag || artist.isEmpty() || track.isEmpty() )
     {
         // FIXME: do some clever filename guessing
-        m_skippedFiles << fi.canonicalFilePath();
-        m_skipped++;
-        return QVariantMap();
+        tag = fingerprintFile( fi );
+        if ( tag )
+        {
+            artist = tag->artist().trimmed();
+            album  = tag->album().trimmed();
+            track  = tag->title().trimmed();
+        }
+        else
+        {
+            m_skippedFiles << fi.canonicalFilePath();
+            m_skipped++;
+            return QVariantMap();
+        }
     }
 
     QString mimetype = m_ext2mime.value( suffix );
@@ -432,3 +448,48 @@ MusicScanner::readFile( const QFileInfo& fi )
     return m;
 }
 
+
+Tomahawk::Tag*
+MusicScanner::fingerprintFile( const QFileInfo& fi )
+{
+    tDebug() << "Fingerprinting track: " << fi.absoluteFilePath();
+    lastfm::MutableTrack track;
+    track.setArtist("TestArtist");
+    track.setTitle("TestTitel");
+    track.setAlbum("Album1");
+    track.setTrackNumber(1);
+    track.setUrl( QUrl::fromLocalFile( fi.absoluteFilePath() ) );
+    try
+    {
+        lastfm::Fingerprint fp( track );
+        if ( fp.id().isNull() )
+        {
+            //TODO: atm let's only fp mp3, make it later nicer and fp others too
+            if ( fi.fileName().endsWith( "mp3" ) || fi.fileName().endsWith( "MP3" ) )
+            {
+                tDebug() << "Fingerprinting track for real";
+                lastfm::FingerprintableSource* fs = new MadSource(  );
+                fp.generate( fs );
+
+                // Quick & dirty hack
+                // TODO: make this async
+                QNetworkReply* reply = fp.submit();
+                QEventLoop loop;
+                loop.connect( reply, SIGNAL(finished()), SLOT(quit()) );
+                loop.exec();
+                tDebug() << reply->peek( reply->bytesAvailable() );
+
+                fp.decode( reply );
+            }
+            else
+                return 0;
+        }
+        tDebug() << "got Fingerprint ID : " << fp.id();
+
+    }
+    catch ( lastfm::Fingerprint::Error e )
+    {
+        return 0;
+    }
+    return 0;
+}
