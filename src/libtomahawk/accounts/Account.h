@@ -23,7 +23,7 @@
 #include "Typedefs.h"
 #include "DllMacro.h"
 
-#include <QObject>
+#include <QQueue>
 #include <QVariantMap>
 #include <QWidget>
 #include <QIcon>
@@ -34,6 +34,11 @@
 
 class SipPlugin;
 class AccountConfigWidget;
+
+namespace QKeychain
+{
+class Job;
+}
 
 namespace Tomahawk
 {
@@ -79,6 +84,13 @@ public:
 
     QVariantHash configuration() const { QMutexLocker locker( &m_mutex ); return m_configuration; }
 
+    // Starts the asynchronous loading of the credentials.
+    // Will emit credentialsChanged() when they are successfully loaded
+    void loadCredentials() const;
+
+    // Asynchronously save credentials to storage
+    void saveCredentials( const QVariantHash& credentials );
+
     /**
      * Configuration widgets can have a "dataError( bool )" signal to enable/disable the OK button in their wrapper dialogs.
      */
@@ -93,8 +105,6 @@ public:
     virtual QString version() const { return QString(); }
 
     virtual void saveConfig() {} // called when the widget has been edited. save values from config widget, call sync() to write to disk account generic settings
-
-    QVariantHash credentials() const { QMutexLocker locker( &m_mutex ); return m_credentials; }
 
     QVariantMap acl() const { QMutexLocker locker( &m_mutex ); return m_acl; }
 
@@ -116,12 +126,11 @@ public:
     void setAccountFriendlyName( const QString &friendlyName )  { QMutexLocker locker( &m_mutex ); m_accountFriendlyName = friendlyName; }
     void setEnabled( bool enabled ) { QMutexLocker locker( &m_mutex ); m_enabled = enabled; }
     void setAccountId( const QString &accountId )  { QMutexLocker locker( &m_mutex ); m_accountId = accountId; }
-    void setCredentials( const QVariantHash &credentialHash ) { QMutexLocker locker( &m_mutex ); m_credentials = credentialHash; }
     void setConfiguration( const QVariantHash &configuration ) { QMutexLocker locker( &m_mutex ); m_configuration = configuration; }
     void setAcl( const QVariantMap &acl ) { QMutexLocker locker( &m_mutex ); m_acl = acl; }
     void setTypes( AccountTypes types );
 
-    void sync() { QMutexLocker locker( &m_mutex ); syncConfig(); };
+    void sync() { QMutexLocker locker( &m_mutex ); syncConfig(); }
 
     /**
      * Removes all the settings held in the config file for this account instance
@@ -140,13 +149,18 @@ signals:
 
     void configurationChanged();
 
+    void credentialsLoaded( const QVariantHash& credentials );
+
 protected:
     virtual void loadFromConfig( const QString &accountId );
     virtual void syncConfig();
+    virtual void syncType();
 
 private slots:
     void onConnectionStateChanged( Tomahawk::Accounts::Account::ConnectionState );
     void onError( int, const QString& );
+
+    void keychainJobFinished( QKeychain::Job* );
 
 private:
     QString m_accountServiceName;
@@ -154,10 +168,13 @@ private:
     QString m_cachedError;
     bool m_enabled;
     QString m_accountId;
-    QVariantHash m_credentials;
     QVariantHash m_configuration;
     QVariantMap m_acl;
     QStringList m_types;
+
+    mutable QList< QKeychain::Job* > m_workingKeychainJobs;
+    mutable QQueue< QKeychain::Job* > m_queuedKeychainJobs;
+
     mutable QMutex m_mutex;
 };
 

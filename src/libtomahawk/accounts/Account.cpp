@@ -20,6 +20,9 @@
 #include "Account.h"
 
 #include "TomahawkSettings.h"
+#include "utils/Logger.h"
+
+#include <qtkeychain/keychain.h>
 
 namespace Tomahawk
 {
@@ -121,6 +124,49 @@ Account::onError( int errorCode, const QString& error )
 
 
 void
+Account::keychainJobFinished( QKeychain::Job* job )
+{
+    if ( job->error() == QKeychain::NoError )
+    {
+        if ( QKeychain::ReadPasswordJob* readJob = qobject_cast< QKeychain::ReadPasswordJob* >( job ) )
+        {
+            tLog() << Q_FUNC_INFO << "QtKeychain readJob finished without errors";
+
+            QVariantHash credentials;
+            QDataStream dataStream( readJob->binaryData() );
+            dataStream >> credentials;
+
+            tLog() << Q_FUNC_INFO << readJob->key();
+
+            emit credentialsLoaded( credentials );
+        }
+        else if ( QKeychain::WritePasswordJob* writeJob = qobject_cast< QKeychain::WritePasswordJob* >( job ) )
+        {
+            tLog() << Q_FUNC_INFO << "QtKeychain writeJob finished";
+        }
+        else if ( QKeychain::DeletePasswordJob* deleteJob = qobject_cast< QKeychain::DeletePasswordJob* >( job ) )
+        {
+            tLog() << Q_FUNC_INFO << "QtKeychain deleteJob finished";
+        }
+    }
+    else
+    {
+        tLog() << Q_FUNC_INFO << "QtKeychain job finished with error: " << job->error() << " " << job->errorString();
+    }
+
+    job->deleteLater();
+
+    m_workingKeychainJobs.removeAll( job );
+    if ( !m_queuedKeychainJobs.isEmpty() )
+    {
+        QKeychain::Job* j = m_queuedKeychainJobs.dequeue();
+        j->start();
+        m_workingKeychainJobs << j;
+    }
+}
+
+
+void
 Account::onConnectionStateChanged( Account::ConnectionState )
 {
     m_cachedError.clear();
@@ -134,12 +180,69 @@ Account::syncConfig()
     s->beginGroup( "accounts/" + m_accountId );
     s->setValue( "accountfriendlyname", m_accountFriendlyName );
     s->setValue( "enabled", m_enabled );
-    s->setValue( "credentials", m_credentials );
     s->setValue( "configuration", m_configuration );
     s->setValue( "acl", m_acl );
     s->setValue( "types", m_types );
     s->endGroup();
     s->sync();
+}
+
+
+void
+Account::syncType()
+{
+    TomahawkSettings* s = TomahawkSettings::instance();
+    s->beginGroup( "accounts/" + m_accountId );
+    s->setValue( "types", m_types );
+    s->endGroup();
+    s->sync();
+}
+
+
+void
+Account::saveCredentials( const QVariantHash& credentials )
+{
+    QByteArray data;
+    {
+        QDataStream ds( &data, QIODevice::WriteOnly );
+        ds << credentials;
+    }
+
+    QKeychain::WritePasswordJob* j = new QKeychain::WritePasswordJob( QLatin1String( "tomahawkaccounts" ), this );
+    j->setKey( m_accountId );
+    j->setAutoDelete( false );
+    j->setBinaryData( data );
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+    j->setInsecureFallback( true );
+#endif
+    connect( j, SIGNAL( finished( QKeychain::Job* ) ), this, SLOT( keychainJobFinished( QKeychain::Job* ) ) );
+    j->start();
+
+    m_workingKeychainJobs << j;
+}
+
+
+void
+Account::loadCredentials() const
+{
+    QKeychain::ReadPasswordJob* j = new QKeychain::ReadPasswordJob( QLatin1String( "tomahawkaccounts" ),
+                                                                    const_cast< Account* >( this ) );
+    j->setKey( m_accountId );
+    j->setAutoDelete( false );
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+    j->setInsecureFallback( true );
+#endif
+    connect( j, SIGNAL( finished( QKeychain::Job* ) ), this, SLOT( keychainJobFinished( QKeychain::Job* ) ) );
+
+    if ( !m_workingKeychainJobs.isEmpty() )
+    {
+        m_queuedKeychainJobs.enqueue( j );
+    }
+    else
+    {
+        j->start();
+        m_workingKeychainJobs << j;
+    }
 }
 
 
@@ -151,11 +254,12 @@ Account::loadFromConfig( const QString& accountId )
     s->beginGroup( "accounts/" + m_accountId );
     m_accountFriendlyName = s->value( "accountfriendlyname", QString() ).toString();
     m_enabled = s->value( "enabled", false ).toBool();
-    m_credentials = s->value( "credentials", QVariantHash() ).toHash();
     m_configuration = s->value( "configuration", QVariantHash() ).toHash();
     m_acl = s->value( "acl", QVariantMap() ).toMap();
     m_types = s->value( "types", QStringList() ).toStringList();
     s->endGroup();
+
+    loadCredentials();
 }
 
 
@@ -166,12 +270,22 @@ Account::removeFromConfig()
     s->beginGroup( "accounts/" + m_accountId );
     s->remove( "accountfriendlyname" );
     s->remove( "enabled" );
-    s->remove( "credentials" );
     s->remove( "configuration" );
     s->remove( "acl" );
     s->remove( "types" );
     s->endGroup();
     s->remove( "accounts/" + m_accountId );
+
+    QKeychain::DeletePasswordJob* j = new QKeychain::DeletePasswordJob( QLatin1String( "tomahawk" ), this );
+    j->setKey( m_accountId );
+    j->setAutoDelete( false );
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+    j->setInsecureFallback( true );
+#endif
+    connect( j, SIGNAL( finished( QKeychain::Job* ) ), this, SLOT( keychainJobFinished( QKeychain::Job* ) ) );
+    j->start();
+
+    m_workingKeychainJobs << j;
 }
 
 
@@ -188,7 +302,8 @@ Account::setTypes( AccountTypes types )
         m_types << "ResolverType";
     if ( types & StatusPushType )
         m_types << "StatusPushType";
-    syncConfig();
+    //syncConfig();
+    syncType();
 }
 
 
