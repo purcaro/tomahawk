@@ -53,6 +53,15 @@
 #endif
 
 
+namespace Tomahawk
+{
+namespace Accounts
+{
+class XmppAccount;
+}
+}
+
+
 class ACCOUNTDLLEXPORT XmppSipPlugin : public SipPlugin
 {
     Q_OBJECT
@@ -60,7 +69,7 @@ class ACCOUNTDLLEXPORT XmppSipPlugin : public SipPlugin
 friend class Tomahawk::InfoSystem::XmppInfoPlugin;
 
 public:
-    XmppSipPlugin( Tomahawk::Accounts::Account* account );
+    XmppSipPlugin( Tomahawk::Accounts::XmppAccount* account );
     virtual ~XmppSipPlugin();
 
     //FIXME: Make this more correct
@@ -133,6 +142,7 @@ private:
     int m_currentPort;
     QString m_currentResource;
 
+    Tomahawk::Accounts::XmppAccount* m_xmppAccount;
     QPointer< Tomahawk::InfoSystem::XmppInfoPlugin > m_infoPlugin;
     Tomahawk::Accounts::Account::ConnectionState m_state;
 

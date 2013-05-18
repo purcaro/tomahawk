@@ -124,6 +124,9 @@ SpotifyAccount::~SpotifyAccount()
 void
 SpotifyAccount::init()
 {
+    connect( this, SIGNAL( credentialsLoaded( QVariantHash ) ),
+             this, SLOT( onCredentialsLoaded( QVariantHash ) ) );
+
     setAccountFriendlyName( "Spotify" );
     setAccountServiceName( "spotify" );
 
@@ -245,6 +248,22 @@ SpotifyAccount::killExistingResolvers()
     const int ret = p.execute( "taskkill.exe /F /im spotify_tomahawkresolver.exe" );
     qDebug() << "Tried to taskkill.exe /F /im spotify_tomahawkresolver.exe with return code:" << ret;
 #endif
+}
+
+
+void
+SpotifyAccount::onCredentialsLoaded( const QVariantHash& credentials )
+{
+    m_credentials = credentials;
+}
+
+
+void
+SpotifyAccount::setCredentials( const QVariantHash& creds )
+{
+    m_credentials = creds;
+
+    saveCredentials( creds );
 }
 
 
@@ -790,12 +809,10 @@ SpotifyAccount::resolverMessage( const QString &msgType, const QVariantMap &msg 
 {
     if ( msgType == "credentials" )
     {
-        QVariantHash creds = credentials();
-
-        creds[ "username" ] = msg.value( "username" );
-        creds[ "password" ] = msg.value( "password" );
-        creds[ "highQuality" ] = msg.value( "highQuality" );
-        setCredentials( creds );
+        m_credentials[ "username" ] = msg.value( "username" );
+        m_credentials[ "password" ] = msg.value( "password" );
+        m_credentials[ "highQuality" ] = msg.value( "highQuality" );
+        saveCredentials( m_credentials );
 
         m_loggedIn = msg.value( "loggedIn", false ).toBool();
         if ( m_loggedIn )
@@ -803,10 +820,10 @@ SpotifyAccount::resolverMessage( const QString &msgType, const QVariantMap &msg 
             configurationWidget();
 
             if ( !m_configWidget.isNull() )
-                m_configWidget.data()->loginResponse( true, QString(), creds[ "username" ].toString() );
+                m_configWidget.data()->loginResponse( true, QString(), m_credentials[ "username" ].toString() );
         }
 
-        qDebug() << "Set creds:" << creds.value( "username" ) << creds.value( "password" ) << msg.value( "username" ) << msg.value( "password" );
+        qDebug() << "Set creds:" << m_credentials.value( "username" ) << m_credentials.value( "password" ) << msg.value( "username" ) << msg.value( "password" );
 
         QVariantHash config = configuration();
         config[ "hasMigrated" ] = true;
@@ -1026,12 +1043,10 @@ SpotifyAccount::resolverMessage( const QString &msgType, const QVariantMap &msg 
     }
     else if ( msgType == "loginResponse" )
     {
-        QVariantHash creds = credentials();
-        creds[ "username" ] = msg.value( "username" ).toString();
-        creds[ "password" ] = msg.value( "password" ).toString();
-        creds[ "highQuality" ] = msg.value( "highQuality" ).toString();
-        setCredentials( creds );
-        sync();
+        m_credentials[ "username" ] = msg.value( "username" ).toString();
+        m_credentials[ "password" ] = msg.value( "password" ).toString();
+        m_credentials[ "highQuality" ] = msg.value( "highQuality" ).toString();
+        saveCredentials( m_credentials );
 
         const bool success = msg.value( "success" ).toBool();
 
@@ -1046,7 +1061,7 @@ SpotifyAccount::resolverMessage( const QString &msgType, const QVariantMap &msg 
         if ( m_configWidget.data() )
         {
             const QString message = msg.value( "message" ).toString();
-            m_configWidget.data()->loginResponse( success, message, creds[ "username" ].toString() );
+            m_configWidget.data()->loginResponse( success, message, m_credentials[ "username" ].toString() );
         }
     }
     else if ( msgType == "playlistDeleted" )
@@ -1164,15 +1179,14 @@ SpotifyAccount::saveConfig()
         return;
 
     QVariantHash creds = credentials();
-    if ( creds.value( "username" ).toString() != m_configWidget.data()->username() ||
-         creds.value( "password" ).toString() != m_configWidget.data()->password() ||
-         creds.value( "highQuality" ).toBool() != m_configWidget.data()->highQuality() )
+    if ( m_credentials.value( "username" ).toString() != m_configWidget.data()->username() ||
+         m_credentials.value( "password" ).toString() != m_configWidget.data()->password() ||
+         m_credentials.value( "highQuality" ).toBool() != m_configWidget.data()->highQuality() )
     {
-        creds[ "username" ] = m_configWidget.data()->username();
-        creds[ "password" ] = m_configWidget.data()->password();
-        creds[ "highQuality" ] = m_configWidget.data()->highQuality();
-        setCredentials( creds );
-
+        m_credentials[ "username" ] = m_configWidget.data()->username();
+        m_credentials[ "password" ] = m_configWidget.data()->password();
+        m_credentials[ "highQuality" ] = m_configWidget.data()->highQuality();
+        saveCredentials( m_credentials );
     }
 
     QVariantHash config = configuration();

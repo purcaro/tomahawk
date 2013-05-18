@@ -925,7 +925,7 @@ LastFmInfoPlugin::settingsChanged()
             m_scrobbler = 0;
         }
 
-        m_account.data()->setSessionKey( QString() );
+        m_account.data()->setSessionKey( QString(), true );
         createScrobbler();
     }
 }
@@ -946,14 +946,14 @@ LastFmInfoPlugin::onAuthenticated()
     if ( authJob->error() == QNetworkReply::NoError && lfm.attribute("status") == "ok" )
     {
         lastfm::ws::SessionKey = lfm[ "session" ][ "key" ].text();
-        m_account.data()->setSessionKey( lastfm::ws::SessionKey.toLatin1() );
+        m_account.data()->setSessionKey( lastfm::ws::SessionKey.toLatin1(), true );
 
         if ( m_account.data()->scrobble() )
             m_scrobbler = new lastfm::Audioscrobbler( "thk" );
     }
     else
     {
-        m_account.data()->setSessionKey( QByteArray() );
+        m_account.data()->setSessionKey( QString(), true );
 
         QString error = "Got error in Last.fm authentication job";
         if ( lfm.children( "error" ).size() > 0 )

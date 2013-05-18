@@ -79,11 +79,16 @@ public:
     bool refreshTwitterAuth();
     TomahawkOAuthTwitter* twitterAuth() const { return m_twitterAuth.data(); }
 
+    QVariantHash credentials() const { return m_credentials; }
+    void setCredentials( const QVariantHash& creds );
+
 signals:
     void nowAuthenticated( const QPointer< TomahawkOAuthTwitter >&, const QTweetUser &user );
     void nowDeauthenticated();
 
 private slots:
+    void onCredentialsLoaded( const QVariantHash& credentials );
+
     void authenticateSlot();
     void configDialogAuthedSignalSlot( bool authed );
     void connectAuthVerifyReply( const QTweetUser &user );
@@ -92,6 +97,7 @@ private:
     QIcon m_icon;
     bool m_isAuthenticated;
     bool m_isAuthenticating;
+    QVariantHash m_credentials;
     QPointer< TomahawkOAuthTwitter > m_twitterAuth;
     QPointer< TwitterConfigWidget > m_configWidget;
 //    QPointer< TwitterSipPlugin > m_twitterSipPlugin;

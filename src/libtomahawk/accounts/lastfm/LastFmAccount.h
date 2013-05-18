@@ -85,11 +85,11 @@ public:
     virtual void saveConfig();
 
     QString username() const;
-    void setUsername( const QString& );
+    void setUsername( const QString&, bool immediate = false );
     QString password() const;
-    void setPassword( const QString& );
+    void setPassword( const QString&, bool immediate = false );
     QString sessionKey() const;
-    void setSessionKey( const QString& );
+    void setSessionKey( const QString&, bool immediate = false );
     bool scrobble() const;
     void setScrobble( bool scrobble );
 
@@ -101,12 +101,17 @@ private slots:
     void resolverInstalled( const QString& resolverId );
 
     void resolverChanged();
+
+    void onCredentialsLoaded( const QVariantHash& credentials );
+
 private:
     void hookupResolver();
 
     QPointer<Tomahawk::ExternalResolverGui> m_resolver;
     QPointer<Tomahawk::InfoSystem::LastFmInfoPlugin> m_infoPlugin;
     QPointer<LastFmConfig> m_configWidget;
+
+    QVariantHash m_credentials;
 };
 
 }

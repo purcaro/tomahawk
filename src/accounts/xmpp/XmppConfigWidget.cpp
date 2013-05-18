@@ -40,15 +40,9 @@ XmppConfigWidget::XmppConfigWidget( XmppAccount* account, QWidget *parent )
     , m_disableChecksForGoogle( false )
 {
     m_ui->setupUi( this );
-
-    m_ui->xmppUsername->setText( account->credentials().contains( "username" ) ? account->credentials()[ "username" ].toString() : QString() );
-    m_ui->xmppPassword->setText( account->credentials().contains( "password" ) ? account->credentials()[ "password" ].toString() : QString() );
-    m_ui->xmppServer->setText( account->configuration().contains( "server" ) ? account->configuration()[ "server" ].toString() : QString() );
-    m_ui->xmppPort->setValue( account->configuration().contains( "port" ) ? account->configuration()[ "port" ].toInt() : 5222 );
-    m_ui->xmppPublishTracksCheckbox->setChecked( account->configuration().contains( "publishtracks" ) ? account->configuration()[ "publishtracks" ].toBool() : true);
-    m_ui->xmppEnforceSecureCheckbox->setChecked( account->configuration().contains( "enforcesecure" ) ? account->configuration()[ "enforcesecure" ].toBool() : false);
     m_ui->jidExistsLabel->hide();
 
+    loadFromConfig();
 
     connect( m_ui->xmppUsername, SIGNAL( textChanged( QString ) ), SLOT( onCheckJidExists( QString ) ) );
 }
@@ -58,6 +52,7 @@ XmppConfigWidget::~XmppConfigWidget()
 {
     delete m_ui;
 }
+
 
 void
 XmppConfigWidget::saveConfig()
@@ -77,23 +72,49 @@ XmppConfigWidget::saveConfig()
     m_account->setConfiguration( configuration);
     m_account->sync();
 
+    m_account->setCredentials( credentials );
+
     static_cast< XmppSipPlugin* >( m_account->sipPlugin() )->checkSettings();
+}
+
+
+void
+XmppConfigWidget::showEvent( QShowEvent* event )
+{
+    loadFromConfig();
+}
+
+
+void
+XmppConfigWidget::loadFromConfig()
+{
+    m_ui->xmppUsername->setText( m_account->credentials().contains( "username" ) ? m_account->credentials()[ "username" ].toString() : QString() );
+    m_ui->xmppPassword->setText( m_account->credentials().contains( "password" ) ? m_account->credentials()[ "password" ].toString() : QString() );
+    m_ui->xmppServer->setText( m_account->configuration().contains( "server" ) ? m_account->configuration()[ "server" ].toString() : QString() );
+    m_ui->xmppPort->setValue( m_account->configuration().contains( "port" ) ? m_account->configuration()[ "port" ].toInt() : 5222 );
+    m_ui->xmppPublishTracksCheckbox->setChecked( m_account->configuration().contains( "publishtracks" ) ? m_account->configuration()[ "publishtracks" ].toBool() : true);
+    m_ui->xmppEnforceSecureCheckbox->setChecked( m_account->configuration().contains( "enforcesecure" ) ? m_account->configuration()[ "enforcesecure" ].toBool() : false);
 }
 
 
 void
 XmppConfigWidget::onCheckJidExists( const QString &jid )
 {
-    QList< Tomahawk::Accounts::Account* > accounts = Tomahawk::Accounts::AccountManager::instance()->accounts( Tomahawk::Accounts::SipType );
+    const QList< Tomahawk::Accounts::Account* > accounts = Tomahawk::Accounts::AccountManager::instance()->accounts( Tomahawk::Accounts::SipType );
     foreach( Tomahawk::Accounts::Account* account, accounts )
     {
         if ( account->accountId() == m_account->accountId() )
             continue;
 
-        QString savedUsername = account->credentials()[ "username" ].toString();
-        QStringList savedSplitUsername = account->credentials()[ "username" ].toString().split("@");
-        QString savedServer = account->configuration()[ "server" ].toString();
-        int savedPort = account->configuration()[ "port" ].toInt();
+        XmppAccount* xmppAccount = qobject_cast< XmppAccount* >( account );
+        if ( !xmppAccount )
+            continue;
+
+        // Check if any other xmpp account already uses the given name/settings
+        QString savedUsername = xmppAccount->credentials()[ "username" ].toString();
+        QStringList savedSplitUsername = xmppAccount->credentials()[ "username" ].toString().split("@");
+        QString savedServer = xmppAccount->configuration()[ "server" ].toString();
+        int savedPort = xmppAccount->configuration()[ "port" ].toInt();
 
         if ( ( savedUsername == jid || savedSplitUsername.contains( jid ) ) &&
                savedServer == m_ui->xmppServer->text() &&

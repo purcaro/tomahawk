@@ -34,6 +34,8 @@ SipPlugin::SipPlugin( Tomahawk::Accounts::Account *account, QObject* parent )
     , m_account( account )
 {
     connect( account, SIGNAL( configurationChanged() ), SLOT( configurationChanged() ) );
+    //FIXME: do we need this?
+    connect( account, SIGNAL( credentialsLoaded( QVariantHash ) ), SLOT( configurationChanged() ) );
 }
 
 

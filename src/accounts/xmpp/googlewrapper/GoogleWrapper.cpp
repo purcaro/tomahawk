@@ -43,7 +43,7 @@ GoogleWrapperFactory::icon() const
     return QPixmap( ":/google-account/gmail-logo.png" );
 }
 
-GoogleWrapperSip::GoogleWrapperSip( Account* account )
+GoogleWrapperSip::GoogleWrapperSip( GoogleWrapper* account )
     : XmppSipPlugin( account )
 {
 

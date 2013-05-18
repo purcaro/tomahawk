@@ -84,10 +84,41 @@ TwitterConfigWidget::TwitterConfigWidget( TwitterAccount* account, QWidget *pare
     m_ui->twitterSyncGroupBox->hide();
 }
 
+
 TwitterConfigWidget::~TwitterConfigWidget()
 {
     delete m_ui;
 }
+
+
+void
+TwitterConfigWidget::loadConfig()
+{
+    QVariantHash credentials = m_account->credentials();
+
+    if ( credentials[ "oauthtoken" ].toString().isEmpty() ||
+         credentials[ "oauthtokensecret" ].toString().isEmpty() ||
+         credentials[ "username" ].toString().isEmpty() )
+    {
+        m_ui->twitterStatusLabel->setText( tr( "Status: No saved credentials" ) );
+        m_ui->twitterAuthenticateButton->setText( tr( "Authenticate" ) );
+        m_ui->twitterSyncGroupBox->setVisible( false );
+
+        emit twitterAuthed( false );
+    }
+    else
+    {
+        m_ui->twitterStatusLabel->setText( tr( "Status: Credentials saved for %1" ).arg( m_account->credentials()[ "username" ].toString() ) );
+        m_ui->twitterAuthenticateButton->setText( tr( "De-authenticate" ) );
+        //m_ui->twitterSyncGroupBox->setVisible( true );
+        m_ui->twitterUserTweetLineEdit->setVisible( false );
+
+        emit twitterAuthed( true );
+    }
+
+    m_ui->twitterSyncGroupBox->hide();
+}
+
 
 void
 TwitterConfigWidget::authDeauthTwitter()
@@ -97,6 +128,7 @@ TwitterConfigWidget::authDeauthTwitter()
     else
         deauthenticateTwitter();
 }
+
 
 void
 TwitterConfigWidget::authenticateTwitter()
@@ -115,6 +147,7 @@ TwitterConfigWidget::authenticateTwitter()
     connect( credVerifier, SIGNAL( error( QTweetNetBase::ErrorCode, QString ) ), SLOT( authenticateVerifyError( QTweetNetBase::ErrorCode, QString ) ) );
     credVerifier->verify();
 }
+
 
 void
 TwitterConfigWidget::authenticateVerifyReply( const QTweetUser &user )
@@ -147,6 +180,7 @@ TwitterConfigWidget::authenticateVerifyReply( const QTweetUser &user )
     emit sizeHintChanged();
 }
 
+
 void
 TwitterConfigWidget::authenticateVerifyError( QTweetNetBase::ErrorCode code, const QString &errorMsg )
 {
@@ -157,15 +191,12 @@ TwitterConfigWidget::authenticateVerifyError( QTweetNetBase::ErrorCode code, con
     return;
 }
 
+
 void
 TwitterConfigWidget::deauthenticateTwitter()
 {
     qDebug() << Q_FUNC_INFO;
-    QVariantHash credentials = m_account->credentials();
-    credentials[ "oauthtoken" ] = QString();
-    credentials[ "oauthtokensecret" ] = QString();
-    credentials[ "username" ] = QString();
-    m_account->setCredentials( credentials );
+    m_account->setCredentials( QVariantHash() );
 
     m_ui->twitterStatusLabel->setText(tr("Status: No saved credentials"));
     m_ui->twitterAuthenticateButton->setText( tr( "Authenticate" ) );
@@ -174,6 +205,7 @@ TwitterConfigWidget::deauthenticateTwitter()
     emit twitterAuthed( false );
     emit sizeHintChanged();
 }
+
 
 void
 TwitterConfigWidget::tweetComboBoxIndexChanged( int index )
@@ -192,6 +224,7 @@ TwitterConfigWidget::tweetComboBoxIndexChanged( int index )
         m_ui->twitterTweetGotTomahawkButton->setText( tr( "Tweet!" ) );
 }
 
+
 void
 TwitterConfigWidget::startPostGotTomahawkStatus()
 {
@@ -205,7 +238,7 @@ TwitterConfigWidget::startPostGotTomahawkStatus()
     }
 
     qDebug() << "Posting Got Tomahawk status";
-    QVariantHash credentials = m_account->credentials();
+    const QVariantHash credentials = m_account->credentials();
 
     if ( credentials[ "oauthtoken" ].toString().isEmpty() ||
          credentials[ "oauthtokensecret" ].toString().isEmpty() ||
@@ -222,6 +255,7 @@ TwitterConfigWidget::startPostGotTomahawkStatus()
     connect( credVerifier, SIGNAL( parsedUser(const QTweetUser &) ), SLOT( postGotTomahawkStatusAuthVerifyReply(const QTweetUser &) ) );
     credVerifier->verify();
 }
+
 
 void
 TwitterConfigWidget::postGotTomahawkStatusAuthVerifyReply( const QTweetUser &user )
@@ -267,6 +301,7 @@ TwitterConfigWidget::postGotTomahawkStatusAuthVerifyReply( const QTweetUser &use
     }
 }
 
+
 void
 TwitterConfigWidget::postGotTomahawkStatusUpdateReply( const QTweetStatus& status )
 {
@@ -275,6 +310,7 @@ TwitterConfigWidget::postGotTomahawkStatusUpdateReply( const QTweetStatus& statu
     else
         QMessageBox::information( this, tr("Tweeted!"), tr("Your tweet has been posted!") );
 }
+
 
 void
 TwitterConfigWidget::postGotTomahawkDirectMessageReply( const QTweetDMStatus& status )
@@ -285,12 +321,20 @@ TwitterConfigWidget::postGotTomahawkDirectMessageReply( const QTweetDMStatus& st
         QMessageBox::information( this, tr("Tweeted!"), tr("Your message has been posted!") );
 }
 
+
 void
 TwitterConfigWidget::postGotTomahawkStatusUpdateError( QTweetNetBase::ErrorCode code, const QString& errorMsg )
 {
     qDebug() << Q_FUNC_INFO;
     qDebug() << "Error posting Got Tomahawk message, error code is " << code << ", error message is " << errorMsg;
     QMessageBox::critical( this, tr("Tweetin' Error"), tr("There was an error posting your status -- sorry!") );
+}
+
+
+void
+TwitterConfigWidget::showEvent( QShowEvent* event )
+{
+    loadConfig();
 }
 
 }

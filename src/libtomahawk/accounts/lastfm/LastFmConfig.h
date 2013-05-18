@@ -45,9 +45,14 @@ public:
     QString password() const;
     bool scrobble() const;
 
+    void loadFromConfig();
+
 public slots:
     void testLogin();
     void onLastFmFinished();
+
+protected:
+    void showEvent( QShowEvent* event );
 
 private slots:
     void enableButton();

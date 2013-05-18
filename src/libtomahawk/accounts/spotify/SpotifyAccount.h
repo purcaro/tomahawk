@@ -115,6 +115,9 @@ public:
     void starTrack( const QString& artist, const QString& title, const bool starred );
     void setManualResolverPath( const QString& resolverPath );
 
+    QVariantHash credentials() const { return m_credentials; }
+    void setCredentials( const QVariantHash& creds );
+
     bool loggedIn() const;
 
 public slots:
@@ -127,6 +130,8 @@ public slots:
     void collaborateActionTriggered( QAction* action );
 
 private slots:
+    void onCredentialsLoaded( const QVariantHash& credentials );
+
     void resolverChanged();
     void resolverInstalled( const QString& resolverId );
 
@@ -169,6 +174,8 @@ private:
     QPointer<QWidget> m_aboutWidget;
     QPointer<ScriptResolver> m_spotifyResolver;
     QPointer< InfoSystem::SpotifyInfoPlugin > m_infoPlugin;
+
+    QVariantHash m_credentials;
 
     QMap<QString, QPair<QObject*, QString> > m_qidToSlotMap;
     QMap<QString, QVariant > m_qidToExtraData;

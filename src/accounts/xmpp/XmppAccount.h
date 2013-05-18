@@ -25,6 +25,7 @@
 #include "sip/XmppSip.h"
 #include "accounts/AccountDllMacro.h"
 #include "accounts/Account.h"
+#include "accounts/AccountConfigWidget.h"
 
 #define MYNAME "ACCOUNTJABBER"
 
@@ -77,7 +78,13 @@ public:
     QWidget* aclWidget() { return 0; }
     void saveConfig();
 
+    QVariantHash credentials() const { return m_credentials; }
+    void setCredentials( const QVariantHash& credentials );
+
     virtual Tomahawk::Accounts::Account::ConnectionState connectionState() const;
+
+private slots:
+    void onCredentialsLoaded( const QVariantHash& credentials );
 
 protected:
     QPointer< AccountConfigWidget > m_configWidget; // so the google wrapper can change the config dialog a bit
@@ -86,6 +93,9 @@ protected:
 
     QPixmap m_onlinePixmap;
     QPixmap m_offlinePixmap;
+
+    QVariantHash m_credentials;
+    bool m_credentialsLoading;
 };
 
 };

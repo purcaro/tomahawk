@@ -44,11 +44,13 @@ public:
     virtual Account* createAccount( const QString& pluginId );
 };
 
+class GoogleWrapper;
+
 class ACCOUNTDLLEXPORT GoogleWrapperSip : public XmppSipPlugin
 {
     Q_OBJECT
 public:
-    GoogleWrapperSip( Tomahawk::Accounts::Account* account );
+    GoogleWrapperSip( Tomahawk::Accounts::GoogleWrapper* account );
     virtual ~GoogleWrapperSip();
 
     virtual QString inviteString() const;

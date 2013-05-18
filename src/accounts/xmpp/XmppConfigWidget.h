@@ -49,10 +49,15 @@ public:
 
     void saveConfig();
 
+    void loadFromConfig();
+
     virtual void checkForErrors();
 
 signals:
     void dataError( bool exists );
+
+protected:
+    void showEvent( QShowEvent* event );
 
 private slots:
     void onCheckJidExists( const QString& jid );

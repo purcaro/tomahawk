@@ -50,18 +50,13 @@ LastFmConfig::LastFmConfig( LastFmAccount* account )
     m_ui = new Ui_LastFmConfig;
     m_ui->setupUi( this );
 
-    m_ui->progressBar->hide();
+    connect( m_ui->testLogin, SIGNAL( clicked( bool ) ), this, SLOT( testLogin() ) );
 
-    m_ui->username->setText( m_account->username() );
-    m_ui->password->setText( m_account->password() );
-    m_ui->enable->setChecked( m_account->scrobble() );
+    connect( m_ui->importHistory, SIGNAL( clicked( bool ) ), this, SLOT( loadHistory() ) );
+    connect( m_ui->syncLovedTracks, SIGNAL( clicked( bool ) ), this, SLOT( syncLovedTracks() ) );
 
-    connect( m_ui->testLogin, SIGNAL( clicked( bool ) ), SLOT( testLogin() ) );
-    connect( m_ui->importHistory, SIGNAL( clicked( bool ) ), SLOT( loadHistory() ) );
-    connect( m_ui->syncLovedTracks, SIGNAL( clicked( bool ) ), SLOT( syncLovedTracks() ) );
-
-    connect( m_ui->username, SIGNAL( textChanged( QString ) ), SLOT( enableButton() ) );
-    connect( m_ui->password, SIGNAL( textChanged( QString ) ), SLOT( enableButton() ) );
+    connect( m_ui->username, SIGNAL( textChanged( QString ) ), this, SLOT( enableButton() ) );
+    connect( m_ui->password, SIGNAL( textChanged( QString ) ), this, SLOT( enableButton() ) );
 }
 
 
@@ -76,6 +71,15 @@ bool
 LastFmConfig::scrobble() const
 {
     return m_ui->enable->isChecked();
+}
+
+
+void
+LastFmConfig::loadFromConfig()
+{
+    m_ui->username->setText( m_account->username() );
+    m_ui->password->setText( m_account->password() );
+    m_ui->enable->setChecked( m_account->scrobble() );
 }
 
 
@@ -417,5 +421,12 @@ LastFmConfig::syncLoved()
 
     m_ui->progressBar->setValue( m_ui->progressBar->value() + 1 );
     m_ui->syncLovedTracks->setText( tr( "Synchronization Finished" ) );
+}
+
+
+void
+LastFmConfig::showEvent( QShowEvent* event )
+{
+    loadFromConfig();
 }
 

@@ -54,6 +54,9 @@ TwitterAccount::TwitterAccount( const QString &accountId )
     setAccountServiceName( "Twitter" );
     setTypes( AccountTypes( StatusPushType ) );
 
+    connect( this, SIGNAL( credentialsLoaded( QVariantHash ) ),
+             this, SLOT( onCredentialsLoaded( QVariantHash ) ) );
+
     qDebug() << "Got cached peers:" << configuration() << configuration()[ "cachedpeers" ];
 
     m_configWidget = QPointer< TwitterConfigWidget >( new TwitterConfigWidget( this, 0 ) );
@@ -77,10 +80,38 @@ TwitterAccount::configDialogAuthedSignalSlot( bool authed )
 {
     tDebug() << Q_FUNC_INFO;
     m_isAuthenticated = authed;
-    if ( !credentials()[ "username" ].toString().isEmpty() )
-        setAccountFriendlyName( QString( "@%1" ).arg( credentials()[ "username" ].toString() ) );
+    if ( !m_credentials[ "username" ].toString().isEmpty() )
+        setAccountFriendlyName( QString( "@%1" ).arg( m_credentials[ "username" ].toString() ) );
     syncConfig();
     emit configurationChanged();
+}
+
+
+void
+TwitterAccount::onCredentialsLoaded( const QVariantHash& credentials )
+{
+    // Credentials loaded
+    bool reload = false;
+    if ( !credentials[ "oauthtoken" ].toString().isEmpty() && !credentials[ "oauthtokensecret" ].toString().isEmpty() &&
+         ( m_credentials[ "oauthtoken" ] != credentials[ "oauthtoken"] || m_credentials[ "oauthtokensecret" ] != credentials[ "oauthtokensecret" ] ) )
+        reload = true;
+
+    m_credentials = credentials;
+
+    if ( reload && enabled() )
+    {
+        qDebug() << "Twitter account got async load of credentials, authenticating now!";
+        authenticate();
+    }
+}
+
+
+void
+TwitterAccount::setCredentials( const QVariantHash& creds )
+{
+    m_credentials = creds;
+
+    saveCredentials( creds );
 }
 
 
@@ -147,9 +178,9 @@ TwitterAccount::authenticateSlot()
         return;
     }
 
-    tDebug() << Q_FUNC_INFO << "credentials: " << credentials().keys();
+    tDebug() << Q_FUNC_INFO << "credentials: " << m_credentials.keys();
 
-    if ( credentials()[ "oauthtoken" ].toString().isEmpty() || credentials()[ "oauthtokensecret" ].toString().isEmpty() )
+    if ( m_credentials[ "oauthtoken" ].toString().isEmpty() || m_credentials[ "oauthtokensecret" ].toString().isEmpty() )
     {
         tDebug() << Q_FUNC_INFO << "TwitterSipPlugin has empty Twitter credentials; not connecting";
         return;
@@ -199,8 +230,8 @@ TwitterAccount::refreshTwitterAuth()
     if( m_twitterAuth.isNull() )
       return false;
 
-    m_twitterAuth.data()->setOAuthToken( credentials()[ "oauthtoken" ].toString().toLatin1() );
-    m_twitterAuth.data()->setOAuthTokenSecret( credentials()[ "oauthtokensecret" ].toString().toLatin1() );
+    m_twitterAuth.data()->setOAuthToken( m_credentials[ "oauthtoken" ].toString().toLatin1() );
+    m_twitterAuth.data()->setOAuthTokenSecret( m_credentials[ "oauthtokensecret" ].toString().toLatin1() );
 
     return true;
 }

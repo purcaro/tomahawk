@@ -32,6 +32,8 @@
 #include "utils/TomahawkUtilsGui.h"
 #include "sip/PeerInfo.h"
 
+#include "../XmppAccount.h"
+
 #include "config.h"
 #include "TomahawkVersion.h"
 
@@ -91,9 +93,10 @@ JreenMessageHandler( QtMsgType type, const char *msg )
 }
 
 
-XmppSipPlugin::XmppSipPlugin( Account* account )
+XmppSipPlugin::XmppSipPlugin( XmppAccount* account )
     : SipPlugin( account )
     , m_state( Account::Disconnected )
+    , m_xmppAccount( account )
 #ifndef ENABLE_HEADLESS
     , m_menu( 0 )
     , m_xmlConsole( 0 )
@@ -228,7 +231,7 @@ XmppSipPlugin::connectPlugin()
         return;
     }
 
-    if ( m_account->configuration().contains( "enforcesecure" ) && m_account->configuration().value( "enforcesecure" ).toBool() )
+    if ( m_xmppAccount->configuration().contains( "enforcesecure" ) && m_xmppAccount->configuration().value( "enforcesecure" ).toBool() )
     {
         tLog() << Q_FUNC_INFO << "Enforcing secure connection...";
         m_client->setFeatureConfig( Jreen::Client::Encryption, Jreen::Client::Force );
@@ -496,7 +499,7 @@ XmppSipPlugin::showAddFriendDialog()
 void
 XmppSipPlugin::publishTune( const QUrl& url, const InfoSystem::InfoStringHash& trackInfo )
 {
-    if ( m_account->configuration().value("publishtracks").toBool() == false )
+    if ( m_xmppAccount->configuration().value("publishtracks").toBool() == false )
     {
         tDebug() << Q_FUNC_INFO << m_client->jid().full() << "Not publishing now playing info (disabled in account config)";
         return;
@@ -564,6 +567,7 @@ XmppSipPlugin::configurationChanged()
     server = readServer();
     port = readPort();
 
+    qDebug() << Q_FUNC_INFO << "Configuration changed in SIP plugin:" << username << password << server << port << m_account->accountFriendlyName();
     if ( m_currentUsername != username )
     {
         m_currentUsername = username;
@@ -588,18 +592,19 @@ XmppSipPlugin::configurationChanged()
     if ( !m_currentUsername.contains( '@' ) )
     {
         m_currentUsername += defaultSuffix();
-        QVariantHash credentials = m_account->credentials();
+        QVariantHash credentials = m_xmppAccount->credentials();
         credentials[ "username" ] = m_currentUsername;
-        m_account->setCredentials( credentials );
-        m_account->sync();
+        m_xmppAccount->saveCredentials( credentials );
     }
 
+    qDebug() << Q_FUNC_INFO << "reconnecting?" << reconnect << "enabled?" << m_account->enabled() << m_account->accountFriendlyName();
     if ( reconnect )
+        setupClientHelper();
+
+    if ( reconnect && m_account->enabled() )
     {
         qDebug() << Q_FUNC_INFO << "Reconnecting jreen plugin...";
         disconnectPlugin();
-
-        setupClientHelper();
 
         qDebug() << Q_FUNC_INFO << "Updated settings";
         connectPlugin();
@@ -1058,23 +1063,21 @@ XmppSipPlugin::readXmlConsoleEnabled()
 QString
 XmppSipPlugin::readUsername()
 {
-    QVariantHash credentials = m_account->credentials();
-    return credentials.contains( "username" ) ? credentials[ "username" ].toString() : QString();
+    return m_xmppAccount->credentials().value( "username" ).toString();
 }
 
 
 QString
 XmppSipPlugin::readPassword()
 {
-    QVariantHash credentials = m_account->credentials();
-    return credentials.contains( "password" ) ? credentials[ "password" ].toString() : QString();
+    return m_xmppAccount->credentials().value( "password" ).toString();
 }
 
 
 int
 XmppSipPlugin::readPort()
 {
-    QVariantHash configuration = m_account->configuration();
+    QVariantHash configuration = m_xmppAccount->configuration();
     return configuration.contains( "port" ) ? configuration[ "port" ].toInt() : 5222;
 }
 
@@ -1082,7 +1085,7 @@ XmppSipPlugin::readPort()
 QString
 XmppSipPlugin::readServer()
 {
-    QVariantHash configuration = m_account->configuration();
+    QVariantHash configuration = m_xmppAccount->configuration();
     return configuration.contains( "server" ) ? configuration[ "server" ].toString() : QString();
 }
 

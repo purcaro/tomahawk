@@ -54,6 +54,9 @@ LastFmAccountFactory::icon() const
 LastFmAccount::LastFmAccount( const QString& accountId )
     : CustomAtticaAccount( accountId )
 {
+    connect( this, SIGNAL( credentialsLoaded( QVariantHash ) ),
+             this, SLOT( onCredentialsLoaded( QVariantHash ) ) );
+
     setAccountFriendlyName( "Last.Fm" );
 
     AtticaManager::instance()->registerCustomAccount( "lastfm", this );
@@ -187,57 +190,66 @@ LastFmAccount::saveConfig()
         setScrobble( m_configWidget.data()->scrobble() );
     }
 
-    sync();
+    saveCredentials( m_credentials );
+}
 
-    if ( m_infoPlugin )
-        QTimer::singleShot( 0, m_infoPlugin.data(), SLOT( settingsChanged() ) );
+
+void
+LastFmAccount::onCredentialsLoaded( const QVariantHash& credentials )
+{
+    m_credentials = credentials;
+    if ( !m_infoPlugin.isNull() )
+        m_infoPlugin.data()->settingsChanged();
 }
 
 
 QString
 LastFmAccount::password() const
 {
-    return credentials().value( "password" ).toString();
+    return m_credentials.value( "password" ).toString();
 }
 
 
 void
-LastFmAccount::setPassword( const QString& password )
+LastFmAccount::setPassword( const QString& password, bool immediate )
 {
-    QVariantHash creds = credentials();
-    creds[ "password" ] = password;
-    setCredentials( creds );
+    m_credentials[ "password" ] = password;
+
+    if ( immediate )
+        saveCredentials( m_credentials );
 }
 
 QString
 LastFmAccount::sessionKey() const
 {
-    return credentials().value( "sessionkey" ).toString();
+    return m_credentials.value( "sessionkey" ).toString();
 }
 
 
 void
-LastFmAccount::setSessionKey( const QString& sessionkey )
+LastFmAccount::setSessionKey( const QString& sessionkey, bool immediate )
 {
-    QVariantHash creds = credentials();
-    creds[ "sessionkey" ] = sessionkey;
-    setCredentials( creds );
+    m_credentials[ "sessionkey" ] = sessionkey;
+
+    if ( immediate )
+        saveCredentials( m_credentials );
 }
 
 
 QString
 LastFmAccount::username() const
 {
-    return credentials().value( "username" ).toString();
+    return m_credentials.value( "username" ).toString();
 }
 
 
 void
-LastFmAccount::setUsername( const QString& username )
+LastFmAccount::setUsername( const QString& username, bool immediate )
 {
-    QVariantHash creds = credentials();
-    creds[ "username" ] = username;
-    setCredentials( creds );
+    m_credentials[ "username" ] = username;
+
+    if ( immediate )
+        saveCredentials( m_credentials );
 }
 
 
