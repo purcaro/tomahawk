@@ -626,7 +626,7 @@ TomahawkSettings::doUpgrade( int oldVersion, int newVersion )
             {
                 QKeychain::WritePasswordJob* j = new QKeychain::WritePasswordJob( QLatin1String( "tomahawkaccounts" ), this );
                 j->setKey( account );
-                j->setAutoDelete( true );
+                j->setAutoDelete( false );
 
                 QByteArray data;
                 QDataStream ds( &data, QIODevice::WriteOnly );
