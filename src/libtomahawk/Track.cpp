@@ -173,17 +173,6 @@ Track::startPlaying()
     Database::instance()->enqueue( QSharedPointer< DatabaseCommand >( cmd ) );
 
 
-}
-
-
-void
-Track::finishPlaying( int timeElapsed )
-{
-    DatabaseCommand_LogPlayback* cmd = new DatabaseCommand_LogPlayback( weakRef().toStrongRef(),
-                                                                        DatabaseCommand_LogPlayback::Finished,
-                                                                        timeElapsed );
-    Database::instance()->enqueue( QSharedPointer< DatabaseCommand >( cmd ) );
-
     bool isUnlistened = false;
     foreach ( Tomahawk::SocialAction action, allSocialActions() )
     {
@@ -211,6 +200,16 @@ Track::finishPlaying( int timeElapsed )
         }
         m_trackData->setAllSocialActions( actions ); //emits socialActionsLoaded which gets propagated here
     }
+}
+
+
+void
+Track::finishPlaying( int timeElapsed )
+{
+    DatabaseCommand_LogPlayback* cmd = new DatabaseCommand_LogPlayback( weakRef().toStrongRef(),
+                                                                        DatabaseCommand_LogPlayback::Finished,
+                                                                        timeElapsed );
+    Database::instance()->enqueue( QSharedPointer< DatabaseCommand >( cmd ) );
 }
 
 
