@@ -199,7 +199,7 @@ LastFmAccount::onCredentialsLoaded( const QVariantHash& credentials )
 {
     m_credentials = credentials;
     if ( !m_infoPlugin.isNull() )
-        m_infoPlugin.data()->settingsChanged();
+        QTimer::singleShot( 0, m_infoPlugin.data(), SLOT( settingsChanged() ) );
 }
 
 
