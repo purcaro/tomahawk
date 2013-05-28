@@ -65,6 +65,7 @@ signals:
 
 private slots:
     void keychainJobFinished( QKeychain::Job* );
+    void onLoadCredentialsTimeout();
 
 private:
     QHash< QString, QVariantHash > m_credentials;

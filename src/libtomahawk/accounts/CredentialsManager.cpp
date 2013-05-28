@@ -23,6 +23,7 @@
 #include <qtkeychain/keychain.h>
 
 #include <QStringList>
+#include <QTimer>
 
 #define TOMAHAWK_KEYCHAINSVC QLatin1String("Tomahawk")
 
@@ -44,6 +45,12 @@ void
 CredentialsManager::loadCredentials( QStringList keys )
 {
     tDebug() << Q_FUNC_INFO << "keys:" << keys;
+    if ( keys.isEmpty() )
+    {
+        emit ready();
+        return;
+    }
+
     foreach ( QString key, keys )
     {
         QKeychain::ReadPasswordJob* j = new QKeychain::ReadPasswordJob( TOMAHAWK_KEYCHAINSVC, this );
@@ -59,6 +66,8 @@ CredentialsManager::loadCredentials( QStringList keys )
         tDebug()  << "Launching QtKeychain readJob for" << key;
     }
 
+    //Timeout, in case something goes wrong:
+    QTimer::singleShot( 6000, this, SLOT( onLoadCredentialsTimeout() ) );
 }
 
 
@@ -162,6 +171,23 @@ CredentialsManager::keychainJobFinished( QKeychain::Job* j )
                << ( ( j->error() == QKeychain::NoError ) ? "without error" : j->errorString() );
     }
     j->deleteLater();
+}
+
+
+void
+CredentialsManager::onLoadCredentialsTimeout()
+{
+    if ( !m_readJobs.isEmpty() )
+    {
+        while ( !m_readJobs.isEmpty() )
+        {
+            QKeychain::ReadPasswordJob* j = m_readJobs.takeFirst();
+            j->blockSignals( true );
+            m_credentials.insert( j->key(), QVariantHash() );
+            j->deleteLater();
+        }
+        emit ready();
+    }
 }
 
 
