@@ -179,11 +179,13 @@ CredentialsManager::onLoadCredentialsTimeout()
 {
     if ( !m_readJobs.isEmpty() )
     {
+        tDebug() << Q_FUNC_INFO << "We hit a timeout! Outstanding jobs:";
         while ( !m_readJobs.isEmpty() )
         {
             QKeychain::ReadPasswordJob* j = m_readJobs.takeFirst();
             j->blockSignals( true );
             m_credentials.insert( j->key(), QVariantHash() );
+            tDebug() << j->key();
             j->deleteLater();
         }
         emit ready();
