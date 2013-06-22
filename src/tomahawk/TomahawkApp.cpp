@@ -47,6 +47,7 @@
 #include "network/DbSyncConnection.h"
 #include "web/Api_v1.h"
 #include "web/Api_v2.h"
+#include "web/Api2HttpsServerConnector.h"
 #include "SourceList.h"
 #include "ShortcutHandler.h"
 #include "filemetadata/ScanManager.h"
@@ -522,8 +523,8 @@ TomahawkApp::initHTTP()
     }
     else
     {
-        m_httpv2_session = QPointer< QxtHttpSessionManager >( new QxtHttpSessionManager() );
-        m_httpv2_connector = QPointer< QxtHttpsServerConnector >( new QxtHttpsServerConnector );
+        m_httpv2_session = QPointer< QxtHttpSessionManager >( new QxtHttpSessionManager( this ) );
+        m_httpv2_connector = QPointer< QxtHttpsServerConnector >( new Api2HttpsServerConnector( this ) );
         if ( m_httpv2_session.isNull() || m_httpv2_connector.isNull() )
         {
             if ( !m_httpv2_session.isNull() )
