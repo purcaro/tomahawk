@@ -285,10 +285,8 @@ add_subdirectory(${THIRDPARTY_DIR}/libportfwd)
 macro_optional_find_package(KDE4)
 macro_optional_find_package(KDE4Installed)
 
-# this was used before we had FindKDE4Installed, just leaving it here to keep the flags
-# for future kde integration
+macro_log_feature(KDE4_FOUND "KDE4" "Provides support for configuring Telepathy Accounts from inside Tomahawk" "https://www.kde.org" FALSE "" "")
 
-# macro_optional_find_package(KDE4)
 IF( KDE4_FOUND )
     IF( CMAKE_C_FLAGS )
         # KDE4 adds and removes some compiler flags that we don't like
